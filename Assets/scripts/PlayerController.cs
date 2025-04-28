@@ -30,15 +30,18 @@ public class PlayerController : MonoBehaviour
     private int comboStep = 0;
     private float lastAttackTime = 0f;
     private float comboResetTime = 0.8f;
+    private Animator animator;
+    private bool isJumping;
+    private bool isFalling;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
+        animator = GetComponent<Animator>();
         inputActions = new PlayerInputActions();
 
         inputActions.Player.Move.performed += ctx => moveInput = ctx.ReadValue<Vector2>();
         inputActions.Player.Move.canceled += ctx => moveInput = Vector2.zero;
-
         inputActions.Player.Jump.performed += ctx => isJumpPressed = true;
         inputActions.Player.Dash.performed += ctx => isDashPressed = true;
         inputActions.Player.Attack.performed += ctx => Attack();
@@ -58,6 +61,27 @@ public class PlayerController : MonoBehaviour
     {
         HandleFlip();
         CheckGrounded();
+
+        animator.SetFloat("Speed", Mathf.Abs(moveInput.x));
+
+        if (!isGrounded && rb.velocity.y > 0.1f)
+        {
+            isJumping = true;
+            isFalling = false;
+        }
+        else if (!isGrounded && rb.velocity.y < -0.1f)
+        {
+            isJumping = false;
+            isFalling = true;
+        }
+        else if (isGrounded)
+        {
+            isJumping = false;
+            isFalling = false;
+        }
+
+        animator.SetBool("isJumping", isJumping);
+        animator.SetBool("isFalling", isFalling);
     }
 
     private void FixedUpdate()
