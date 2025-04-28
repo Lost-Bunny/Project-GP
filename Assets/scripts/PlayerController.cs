@@ -8,7 +8,6 @@ public class PlayerController : MonoBehaviour
     private Vector2 moveInput;
     private bool isJumpPressed;
     private bool isDashPressed;
-    private bool isAttacking;
 
     [Header("Movement Settings")]
     public float moveSpeed = 5f;
@@ -16,9 +15,21 @@ public class PlayerController : MonoBehaviour
     public float dashForce = 20f;
     public float dashDuration = 0.2f;
 
+    [Header("Ground Check Settings")]
+    public Transform groundCheck;
+    public float groundCheckRadius = 0.2f;
+    public LayerMask groundLayer;
+    public float coyoteTime = 0.2f;
+    private float coyoteTimeCounter;
+
+    private bool isGrounded;
     private bool isDashing = false;
     private float dashTimer = 0f;
     private bool facingRight = true;
+
+    private int comboStep = 0;
+    private float lastAttackTime = 0f;
+    private float comboResetTime = 0.8f;
 
     private void Awake()
     {
@@ -46,6 +57,7 @@ public class PlayerController : MonoBehaviour
     private void Update()
     {
         HandleFlip();
+        CheckGrounded();
     }
 
     private void FixedUpdate()
@@ -58,7 +70,7 @@ public class PlayerController : MonoBehaviour
             {
                 isDashing = false;
             }
-            return; 
+            return;
         }
 
         rb.velocity = new Vector2(moveInput.x * moveSpeed, rb.velocity.y);
@@ -76,7 +88,11 @@ public class PlayerController : MonoBehaviour
 
     private void Jump()
     {
-        rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
+        if (coyoteTimeCounter > 0f)
+        {
+            rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
+            coyoteTimeCounter = 0f;
+        }
         isJumpPressed = false;
     }
 
@@ -89,19 +105,31 @@ public class PlayerController : MonoBehaviour
 
     private void Attack()
     {
-        if (isAttacking) return;
-        StartCoroutine(AttackCombo());
-    }
-
-    private System.Collections.IEnumerator AttackCombo()
-    {
-        isAttacking = true;
-        for (int i = 0; i < 3; i++)
+        if (Time.time - lastAttackTime > comboResetTime)
         {
-            Debug.Log($"Attack {i + 1}");
-            yield return new WaitForSeconds(0.3f); 
+            comboStep = 0;
         }
-        isAttacking = false;
+
+        comboStep++;
+        lastAttackTime = Time.time;
+
+        if (comboStep == 1)
+        {
+            Debug.Log("Attack 1");
+        }
+        else if (comboStep == 2)
+        {
+            Debug.Log("Attack 2");
+        }
+        else if (comboStep == 3)
+        {
+            Debug.Log("Attack 3");
+            comboStep = 0;
+        }
+        else
+        {
+            comboStep = 0;
+        }
     }
 
     private void HandleFlip()
@@ -123,5 +151,27 @@ public class PlayerController : MonoBehaviour
         scaler.x *= -1;
         transform.localScale = scaler;
     }
-}
 
+    private void CheckGrounded()
+    {
+        isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
+
+        if (isGrounded)
+        {
+            coyoteTimeCounter = coyoteTime;
+        }
+        else
+        {
+            coyoteTimeCounter -= Time.deltaTime;
+        }
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        if (groundCheck != null)
+        {
+            Gizmos.color = Color.red;
+            Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
+        }
+    }
+}
